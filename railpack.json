@@ -1,0 +1,26 @@
+{
+    "$schema": "https://schema.railpack.com",
+    "provider": "php",
+    "packages": {
+        "php": "8.3",
+        "node": "18"
+    },
+    "buildAptPackages": [
+        "libpng-dev",
+        "libjpeg-dev",
+        "libfreetype6-dev",
+        "libzip-dev",
+        "libicu-dev",
+        "libonig-dev"
+    ],
+    "deploy": {
+        "aptPackages": [
+            "libpng16-16",
+            "libjpeg62-turbo",
+            "libfreetype6",
+            "libzip4",
+            "libicu72",
+            "libonig5"
+        ]
+    }
+}
