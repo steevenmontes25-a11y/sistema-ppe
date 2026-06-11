@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply font-sans antialiased;
+    }
+
+    * {
+        @apply box-border;
+    }
+}
+
+@layer components {
+    /* Estilo del scrollbar institucional */
+    .sidebar-scroll::-webkit-scrollbar {
+        width: 4px;
+    }
+    .sidebar-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+        @apply bg-primary-700 rounded-full;
+    }
+
+    /* Transición suave para sidebar */
+    .sidebar-transition {
+        transition: width 0.3s ease, transform 0.3s ease;
+    }
+}
+
+@layer utilities {
+    .bg-gradient-institutional {
+        background: linear-gradient(135deg, #2D1B69 0%, #4A1B8C 40%, #6B2FBF 100%);
+    }
+    .text-shadow-sm {
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+}
