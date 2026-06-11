@@ -1,67 +1,56 @@
-FROM php:8.3-cli-alpine
+FROM php:8.3-cli-bookworm
 
-# Dependencias del sistema
-RUN apk add --no-cache \
-    nodejs \
-    npm \
-    git \
+# Node.js 18 + dependencias del sistema
+RUN apt-get update && apt-get install -y \
     curl \
-    bash \
-    libpng-dev \
-    libzip-dev \
+    git \
     zip \
     unzip \
-    oniguruma-dev \
+    libzip-dev \
     libxml2-dev \
-    icu-dev \
-    freetype-dev \
-    libjpeg-turbo-dev \
-    libwebp-dev \
-    linux-headers \
-    $PHPIZE_DEPS
+    libicu-dev \
+    libonig-dev \
+    libpng-dev \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
-# Extensiones PHP
-RUN docker-php-ext-configure gd \
-        --with-freetype \
-        --with-jpeg \
-        --with-webp \
-    && docker-php-ext-install -j$(nproc) \
-        pdo \
-        pdo_mysql \
-        mbstring \
-        xml \
-        curl \
-        zip \
-        gd \
-        bcmath \
-        intl \
-        opcache \
-        tokenizer \
-        fileinfo
+# Extensiones PHP (sin GD — no se usa en el proyecto)
+RUN docker-php-ext-install -j$(nproc) \
+    pdo \
+    pdo_mysql \
+    mbstring \
+    xml \
+    zip \
+    bcmath \
+    intl \
+    opcache \
+    tokenizer \
+    fileinfo
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Instalar dependencias PHP primero (cache layer)
+# Dependencias PHP (capa cacheada)
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-# Instalar dependencias Node (cache layer)
+# Dependencias Node (capa cacheada)
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Copiar código fuente
+# Código fuente
 COPY . .
 
-# Ejecutar post-install scripts de composer
+# Post-install scripts
 RUN composer run-script post-autoload-dump 2>/dev/null || true
 
-# Compilar assets React/Vite
+# Build React/Vite
 RUN npm run build
 
-# Permisos de storage
+# Permisos
 RUN chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000
