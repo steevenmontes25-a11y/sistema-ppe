@@ -1,21 +1,33 @@
-FROM php:8.3-cli-bookworm
+# ── Etapa 1: Build de assets React/Vite ──────────────────────────────────────
+FROM node:18-slim AS frontend
 
-# Node.js 18 + dependencias del sistema
-RUN apt-get update && apt-get install -y \
-    curl \
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY resources/ ./resources/
+COPY vite.config.js tailwind.config.js postcss.config.js ./
+COPY public/ ./public/
+
+RUN npm run build
+
+# ── Etapa 2: PHP runtime ──────────────────────────────────────────────────────
+FROM php:8.3-cli-bookworm AS runtime
+
+# Dependencias del sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
+    curl \
     zip \
     unzip \
     libzip-dev \
     libxml2-dev \
-    libicu-dev \
     libonig-dev \
     libpng-dev \
-    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Extensiones PHP (sin GD — no se usa en el proyecto)
+# Extensiones PHP (sin intl ni gd — no requeridas)
 RUN docker-php-ext-install -j$(nproc) \
     pdo \
     pdo_mysql \
@@ -23,7 +35,6 @@ RUN docker-php-ext-install -j$(nproc) \
     xml \
     zip \
     bcmath \
-    intl \
     opcache \
     tokenizer \
     fileinfo
@@ -33,22 +44,18 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Dependencias PHP (capa cacheada)
+# Dependencias PHP
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-
-# Dependencias Node (capa cacheada)
-COPY package.json package-lock.json ./
-RUN npm ci
 
 # Código fuente
 COPY . .
 
-# Post-install scripts
-RUN composer run-script post-autoload-dump 2>/dev/null || true
+# Assets compilados desde etapa frontend
+COPY --from=frontend /app/public/build ./public/build
 
-# Build React/Vite
-RUN npm run build
+# Post-install
+RUN composer run-script post-autoload-dump 2>/dev/null || true
 
 # Permisos
 RUN chmod -R 775 storage bootstrap/cache

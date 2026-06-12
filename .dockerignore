@@ -1,0 +1,13 @@
+node_modules/
+vendor/
+public/build/
+public/storage/
+storage/app/public/bitacoras/
+storage/app/public/fotos-perfil/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+storage/logs/
+.git/
+.env
+*.log
