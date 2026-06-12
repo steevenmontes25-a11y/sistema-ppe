@@ -15,21 +15,14 @@ RUN npm run build
 # ── Etapa 2: PHP runtime ──────────────────────────────────────────────────────
 FROM php:8.3-cli-bookworm AS runtime
 
-# Dependencias del sistema
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    curl \
-    zip \
-    unzip \
-    libzip-dev \
-    libxml2-dev \
-    libonig-dev \
-    libpng-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Herramienta confiable para instalar extensiones PHP sin compilar desde cero
+RUN curl -sSLf \
+    "https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions" \
+    -o /usr/local/bin/install-php-extensions \
+    && chmod +x /usr/local/bin/install-php-extensions
 
-# Extensiones PHP (sin intl ni gd — no requeridas)
-RUN docker-php-ext-install -j$(nproc) \
-    pdo \
+# Extensiones PHP con binarios pre-compilados
+RUN install-php-extensions \
     pdo_mysql \
     mbstring \
     xml \
