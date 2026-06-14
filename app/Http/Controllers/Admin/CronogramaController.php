@@ -64,7 +64,7 @@ class CronogramaController extends Controller
         // Todas las fases del período para el modal de creación/edición
         $todasFases = $periodoActivo
             ? FasePpe::where('periodo_lectivo_id', $periodoActivo->id)
-                ->with(['curso', 'periodoLectivo'])
+                ->with(['curso', 'periodo'])
                 ->orderBy('orden')
                 ->get()
             : collect();
