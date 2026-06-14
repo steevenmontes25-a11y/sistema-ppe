@@ -22,6 +22,52 @@ use App\Http\Controllers\PerfilController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
+// ── RUTAS DIAGNÓSTICO (temporales, sin autenticación) ───────────────────────
+Route::get('/diagnostico', function () {
+    return response()->json([
+        'periodo_activo'   => \App\Models\PeriodoLectivo::where('activo', true)->first(),
+        'total_periodos'   => \App\Models\PeriodoLectivo::count(),
+        'total_usuarios'   => \App\Models\User::count(),
+        'php_version'      => PHP_VERSION,
+        'laravel_version'  => app()->version(),
+    ]);
+})->middleware('web');
+
+Route::get('/setup-inicial', function () {
+    if (\App\Models\User::count() > 0) {
+        return response()->json(['mensaje' => 'Ya existen usuarios. Setup omitido.', 'usuarios' => \App\Models\User::count()]);
+    }
+
+    \Illuminate\Support\Facades\DB::transaction(function () {
+        $roles = ['admin', 'docente', 'estudiante'];
+        foreach ($roles as $rol) {
+            \Spatie\Permission\Models\Role::firstOrCreate(['name' => $rol, 'guard_name' => 'web']);
+        }
+
+        if (\App\Models\PeriodoLectivo::count() === 0) {
+            \App\Models\PeriodoLectivo::create([
+                'nombre'       => 'Período 2024',
+                'fecha_inicio' => '2024-01-01',
+                'fecha_fin'    => '2024-12-31',
+                'activo'       => true,
+            ]);
+        }
+
+        $admin = \App\Models\User::create([
+            'name'      => 'Administrador',
+            'nombres'   => 'Admin',
+            'apellidos' => 'Sistema',
+            'email'     => 'admin@sistema.com',
+            'password'  => \Illuminate\Support\Facades\Hash::make('admin123'),
+            'role'      => 'admin',
+            'estado'    => 'activo',
+        ]);
+        $admin->assignRole('admin');
+    });
+
+    return response()->json(['mensaje' => 'Setup completado. Admin: admin@sistema.com / admin123']);
+})->middleware('web');
+
 // ── RAÍZ: redirige según estado de autenticación ────────────────────────────
 Route::get('/', function () {
     if (!Auth::check()) {

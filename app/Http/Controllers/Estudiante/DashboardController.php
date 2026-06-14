@@ -19,12 +19,15 @@ class DashboardController extends Controller
     public function index(): Response
     {
         $estudiante    = Auth::user();
-        $periodoActivo = PeriodoLectivo::where('activo', true)->first();
+        $periodoActivo = PeriodoLectivo::where('activo', true)->first()
+            ?? PeriodoLectivo::orderByDesc('fecha_inicio')->first();
+
+        $periodoId = $periodoActivo?->id ?? 0;
 
         $matricula = DB::table('estudiante_curso')
             ->join('cursos', 'cursos.id', '=', 'estudiante_curso.curso_id')
             ->where('estudiante_id', $estudiante->id)
-            ->where('estudiante_curso.periodo_lectivo_id', $periodoActivo?->id)
+            ->where('estudiante_curso.periodo_lectivo_id', $periodoId)
             ->select('estudiante_curso.*', 'cursos.nombre as curso_nombre')
             ->first();
 
@@ -39,7 +42,7 @@ class DashboardController extends Controller
         $proximasBitacoras = BitacoraConfig::with(['actividad', 'fase'])
             ->whereHas('fase', fn ($q) =>
                 $q->where('curso_id', $matricula->curso_id)
-                  ->where('periodo_lectivo_id', $periodoActivo->id))
+                  ->where('periodo_lectivo_id', $periodoId))
             ->whereDoesntHave('entregas', fn ($q) =>
                 $q->where('estudiante_id', $estudiante->id))
             ->whereHas('actividad', fn ($q) =>
@@ -64,7 +67,7 @@ class DashboardController extends Controller
         $ultimasNotas = Calificacion::with(['bitacora.config:id,numero_global,nombre'])
             ->whereHas('bitacora', fn ($q) =>
                 $q->where('estudiante_id', $estudiante->id)
-                  ->where('periodo_lectivo_id', $periodoActivo->id))
+                  ->where('periodo_lectivo_id', $periodoId))
             ->orderByDesc('fecha_calificacion')
             ->take(5)
             ->get()
@@ -77,7 +80,7 @@ class DashboardController extends Controller
 
         // ── Asistencia del mes actual ─────────────────────────────────────────
         $asistenciaMes = Asistencia::where('estudiante_id', $estudiante->id)
-            ->where('periodo_lectivo_id', $periodoActivo->id)
+            ->where('periodo_lectivo_id', $periodoId)
             ->whereMonth('fecha', now()->month)
             ->whereYear('fecha', now()->year)
             ->get();
@@ -88,16 +91,16 @@ class DashboardController extends Controller
         // ── Stats generales ───────────────────────────────────────────────────
         $todasNotas = Calificacion::whereHas('bitacora',
             fn ($q) => $q->where('estudiante_id', $estudiante->id)
-                         ->where('periodo_lectivo_id', $periodoActivo->id)
+                         ->where('periodo_lectivo_id', $periodoId)
         )->pluck('nota');
 
         $totalBitacoras = BitacoraConfig::whereHas('fase',
             fn ($q) => $q->where('curso_id', $matricula->curso_id)
-                         ->where('periodo_lectivo_id', $periodoActivo->id)
+                         ->where('periodo_lectivo_id', $periodoId)
         )->count();
 
         $entregadas = Bitacora::where('estudiante_id', $estudiante->id)
-            ->where('periodo_lectivo_id', $periodoActivo->id)
+            ->where('periodo_lectivo_id', $periodoId)
             ->count();
 
         return Inertia::render('Estudiante/Dashboard', [

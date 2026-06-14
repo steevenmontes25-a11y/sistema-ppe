@@ -14,11 +14,14 @@ class MisNotasController extends Controller
     public function index()
     {
         $estudiante    = auth()->user();
-        $periodoActivo = PeriodoLectivo::where('activo', true)->first();
+        $periodoActivo = PeriodoLectivo::where('activo', true)->first()
+            ?? PeriodoLectivo::orderByDesc('fecha_inicio')->first();
+
+        $periodoId = $periodoActivo?->id ?? 0;
 
         $matricula = DB::table('estudiante_curso')
             ->where('estudiante_id', $estudiante->id)
-            ->where('periodo_lectivo_id', $periodoActivo?->id)
+            ->where('periodo_lectivo_id', $periodoId)
             ->first();
 
         if (!$matricula) {
@@ -35,7 +38,7 @@ class MisNotasController extends Controller
                 ]),
         ])
         ->where('curso_id', $matricula->curso_id)
-        ->where('periodo_lectivo_id', $periodoActivo->id)
+        ->where('periodo_lectivo_id', $periodoId)
         ->orderBy('orden')
         ->get()
         ->map(function ($fase) {

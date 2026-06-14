@@ -18,11 +18,14 @@ class CronogramaEstudianteController extends Controller
     public function index()
     {
         $estudiante    = auth()->user();
-        $periodoActivo = PeriodoLectivo::where('activo', true)->first();
+        $periodoActivo = PeriodoLectivo::where('activo', true)->first()
+            ?? PeriodoLectivo::orderByDesc('fecha_inicio')->first();
+
+        $periodoId = $periodoActivo?->id ?? 0;
 
         $matricula = DB::table('estudiante_curso')
             ->where('estudiante_id', $estudiante->id)
-            ->where('periodo_lectivo_id', $periodoActivo?->id)
+            ->where('periodo_lectivo_id', $periodoId)
             ->first();
 
         if (!$matricula) {
@@ -42,7 +45,7 @@ class CronogramaEstudianteController extends Controller
                 ]),
         ])
         ->where('curso_id', $matricula->curso_id)
-        ->where('periodo_lectivo_id', $periodoActivo->id)
+        ->where('periodo_lectivo_id', $periodoId)
         ->orderBy('orden')
         ->get()
         ->map(function ($fase) {
@@ -127,7 +130,12 @@ class CronogramaEstudianteController extends Controller
     public function entregar(Request $request)
     {
         $estudiante    = auth()->user();
-        $periodoActivo = PeriodoLectivo::where('activo', true)->first();
+        $periodoActivo = PeriodoLectivo::where('activo', true)->first()
+            ?? PeriodoLectivo::orderByDesc('fecha_inicio')->first();
+
+        if (!$periodoActivo) {
+            return redirect()->back()->with('error', 'No hay un período lectivo configurado.');
+        }
 
         $request->validate([
             'bitacora_config_id' => 'required|exists:bitacoras_config,id',
@@ -161,15 +169,20 @@ class CronogramaEstudianteController extends Controller
             ->where('periodo_lectivo_id', $periodoActivo->id)
             ->first();
 
+        if (!$matricula) {
+            return redirect()->back()->with('error', 'No tienes matrícula en el período activo.');
+        }
+
         $archivoPath    = null;
         $archivoNombre  = null;
         $archivoTipo    = $request->tipo_entrega;
         $archivoTamanio = null;
+        $periodoDir     = $periodoActivo->id;
 
         if ($request->tipo_entrega === 'texto') {
             $contenido      = $request->texto_contenido;
             $nombre         = "bitacora_{$config->numero_global}_{$estudiante->id}.txt";
-            $archivoPath    = "bitacoras/{$periodoActivo->id}/{$nombre}";
+            $archivoPath    = "bitacoras/{$periodoDir}/{$nombre}";
             Storage::disk('public')->put($archivoPath, $contenido);
             $archivoNombre  = "Bitacora_{$config->numero_global}_texto.txt";
             $archivoTamanio = strlen($contenido);
@@ -177,7 +190,7 @@ class CronogramaEstudianteController extends Controller
             $file           = $request->file('archivo');
             $ext            = $file->getClientOriginalExtension();
             $nombre         = "bitacora_{$config->numero_global}_{$estudiante->id}_{$archivoTipo}.{$ext}";
-            $archivoPath    = $file->storeAs("bitacoras/{$periodoActivo->id}", $nombre, 'public');
+            $archivoPath    = $file->storeAs("bitacoras/{$periodoDir}", $nombre, 'public');
             $archivoNombre  = $file->getClientOriginalName();
             $archivoTamanio = $file->getSize();
         }

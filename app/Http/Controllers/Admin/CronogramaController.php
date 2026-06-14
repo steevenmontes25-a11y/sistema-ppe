@@ -24,6 +24,9 @@ class CronogramaController extends Controller
             ? PeriodoLectivo::find($periodoId)
             : PeriodoLectivo::where('activo', true)->first();
 
+        // Fallback al período más reciente si no hay ninguno activo
+        $periodoActivo = $periodoActivo ?? PeriodoLectivo::orderByDesc('fecha_inicio')->first();
+
         $cursos = $periodoActivo
             ? Curso::where('periodo_lectivo_id', $periodoActivo->id)->orderBy('id')->get()
             : collect();

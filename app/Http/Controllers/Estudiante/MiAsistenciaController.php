@@ -16,13 +16,16 @@ class MiAsistenciaController extends Controller
     public function index(Request $request)
     {
         $estudiante    = auth()->user();
-        $periodoActivo = PeriodoLectivo::where('activo', true)->first();
+        $periodoActivo = PeriodoLectivo::where('activo', true)->first()
+            ?? PeriodoLectivo::orderByDesc('fecha_inicio')->first();
         $mesFiltro     = (int) $request->get('mes',  now()->month);
         $anioFiltro    = (int) $request->get('anio', now()->year);
 
+        $periodoId = $periodoActivo?->id ?? 0;
+
         $matricula = DB::table('estudiante_curso')
             ->where('estudiante_id', $estudiante->id)
-            ->where('periodo_lectivo_id', $periodoActivo?->id)
+            ->where('periodo_lectivo_id', $periodoId)
             ->first();
 
         if (!$matricula) {
@@ -36,7 +39,7 @@ class MiAsistenciaController extends Controller
         }
 
         $todasAsistencias = Asistencia::where('estudiante_id', $estudiante->id)
-            ->where('periodo_lectivo_id', $periodoActivo->id)
+            ->where('periodo_lectivo_id', $periodoId)
             ->with('registradoPor:id,nombres,apellidos')
             ->orderBy('fecha', 'desc')
             ->get();

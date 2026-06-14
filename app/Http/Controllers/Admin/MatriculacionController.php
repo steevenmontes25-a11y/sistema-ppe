@@ -21,7 +21,8 @@ class MatriculacionController extends Controller
 {
     public function index(Request $request): Response
     {
-        $periodoActivo = PeriodoLectivo::where('activo', true)->first();
+        $periodoActivo = PeriodoLectivo::where('activo', true)->first()
+            ?? PeriodoLectivo::orderByDesc('fecha_inicio')->first();
 
         $cursos = $periodoActivo
             ? Curso::where('periodo_lectivo_id', $periodoActivo->id)->orderBy('nombre')->get()
